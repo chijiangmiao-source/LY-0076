@@ -1,10 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { Order, OrderStatus } from '../types'
+import { Order, OrderStatus, WarningInfo } from '../types'
 import { OrderForm } from './OrderForm'
 
 interface OrderFormDialogProps {
   open: boolean
   order?: Order | null
+  warning?: WarningInfo
   onClose: () => void
   onSubmit: (data: {
     orderNo: string
@@ -23,6 +24,7 @@ interface OrderFormDialogProps {
 export function OrderFormDialog({
   open,
   order,
+  warning,
   onClose,
   onSubmit,
   generateOrderNo,
@@ -44,6 +46,7 @@ export function OrderFormDialog({
           <div className="dialog-body">
             <OrderForm
               order={order || undefined}
+              warning={warning}
               onSubmit={(data) => {
                 onSubmit(data)
                 onClose()

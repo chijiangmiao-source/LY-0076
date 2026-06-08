@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'preact/hooks'
-import { Order, OrderStatus, CARD_SPEC_OPTIONS, ORDER_STATUS_MAP } from '../types'
+import { Order, OrderStatus, CARD_SPEC_OPTIONS, ORDER_STATUS_MAP, WarningInfo } from '../types'
 import { ValidationErrors, validateOrder } from '../hooks/useOrders'
 
 interface OrderFormProps {
   order?: Order
+  warning?: WarningInfo
   onSubmit: (data: {
     orderNo: string
     customerName: string
@@ -21,11 +22,13 @@ interface OrderFormProps {
 
 export function OrderForm({
   order,
+  warning,
   onSubmit,
   onCancel,
   generateOrderNo,
   isOrderNoExists
 }: OrderFormProps) {
+  const isOverdueUncompleted = warning?.level === 'overdue' && order && order.status !== 'completed' && order.status !== 'cancelled'
   const isEdit = !!order
   const today = new Date().toISOString().split('T')[0]
 
@@ -195,11 +198,18 @@ export function OrderForm({
               value={formData.status}
               onChange={e => handleFieldChange('status', e.currentTarget.value as OrderStatus)}
               className="form-input"
-              disabled={formData.status === 'completed' || formData.status === 'cancelled'}
+              disabled={
+                formData.status === 'completed' ||
+                formData.status === 'cancelled' ||
+                isOverdueUncompleted
+              }
             >
               {Object.entries(ORDER_STATUS_MAP)
                 .filter(([key]) => {
                   if (formData.status === 'completed' || formData.status === 'cancelled') {
+                    return key === formData.status
+                  }
+                  if (isOverdueUncompleted) {
                     return key === formData.status
                   }
                   return key !== 'completed' && key !== 'cancelled'
@@ -213,7 +223,12 @@ export function OrderForm({
                 {formData.status === 'completed' ? '已完成订单不可修改状态' : '已取消订单不可修改状态'}
               </div>
             )}
-            {formData.status !== 'completed' && formData.status !== 'cancelled' && (
+            {isOverdueUncompleted && (
+              <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>
+                该订单已逾期，状态不可在此修改，请通过订单列表状态流转功能处理
+              </div>
+            )}
+            {formData.status !== 'completed' && formData.status !== 'cancelled' && !isOverdueUncompleted && (
               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
                 需在订单列表中通过状态流转完成订单
               </div>

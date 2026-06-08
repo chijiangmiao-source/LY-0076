@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useState, useMemo } from 'preact/hooks'
 import { useOrders } from './hooks/useOrders'
 import { Order, OrderStatus } from './types'
 import { StatsOverview } from './components/StatsOverview'
@@ -29,24 +29,33 @@ export function App() {
   } = useOrders()
 
   const [showFormDialog, setShowFormDialog] = useState(false)
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
-  const [detailOrder, setDetailOrder] = useState<Order | null>(null)
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null)
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
 
+  const editingOrder = useMemo(
+    () => editingOrderId ? orders.find(o => o.id === editingOrderId) || null : null,
+    [editingOrderId, orders]
+  )
+
+  const detailOrder = useMemo(
+    () => detailOrderId ? orders.find(o => o.id === detailOrderId) || null : null,
+    [detailOrderId, orders]
+  )
+
   const handleAddClick = () => {
-    setEditingOrder(null)
+    setEditingOrderId(null)
     setShowFormDialog(true)
   }
 
   const handleEdit = (order: Order) => {
-    setDetailOrder(order)
-    setEditingOrder(order)
+    setEditingOrderId(order.id)
     setShowDetailDrawer(false)
     setShowFormDialog(true)
   }
 
   const handleViewDetail = (order: Order) => {
-    setDetailOrder(order)
+    setDetailOrderId(order.id)
     setShowDetailDrawer(true)
   }
 
@@ -69,6 +78,16 @@ export function App() {
         alert('编辑订单时不能直接标记为已完成或已取消，请通过订单列表中的状态流转功能操作')
         return
       }
+      const editingWarning = warningMap[editingOrder.id]
+      if (
+        editingWarning?.level === 'overdue' &&
+        editingOrder.status !== 'completed' &&
+        editingOrder.status !== 'cancelled' &&
+        data.status !== editingOrder.status
+      ) {
+        alert('该订单已逾期，状态不可在编辑表单中修改，请通过订单列表状态流转功能处理')
+        return
+      }
       updateOrder(editingOrder.id, data)
     } else {
       if (data.status === 'completed' || data.status === 'cancelled') {
@@ -77,7 +96,7 @@ export function App() {
       }
       addOrder(data)
     }
-    setEditingOrder(null)
+    setEditingOrderId(null)
   }
 
   return (
@@ -124,9 +143,10 @@ export function App() {
       <OrderFormDialog
         open={showFormDialog}
         order={editingOrder}
+        warning={editingOrder ? warningMap[editingOrder.id] : undefined}
         onClose={() => {
           setShowFormDialog(false)
-          setEditingOrder(null)
+          setEditingOrderId(null)
         }}
         onSubmit={handleFormSubmit}
         generateOrderNo={generateOrderNo}
@@ -139,7 +159,7 @@ export function App() {
         warning={detailOrder ? warningMap[detailOrder.id] : undefined}
         onClose={() => {
           setShowDetailDrawer(false)
-          setDetailOrder(null)
+          setDetailOrderId(null)
         }}
         onEdit={handleEdit}
         onAddStep={(step) => detailOrder && addStep(detailOrder.id, step)}
