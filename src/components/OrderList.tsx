@@ -12,6 +12,8 @@ interface OrderListProps {
   canTransitionTo: (order: Order, targetStatus: OrderStatus) => { allowed: boolean; reason?: string }
   getSortedOrders: (orders: Order[]) => Order[]
   filterByWarningLevel: (orders: Order[], level: WarningLevel | 'all') => Order[]
+  isPendingConfirmation: (order: Order) => boolean
+  isMultipleRevisions: (order: Order) => boolean
 }
 
 export function OrderList({
@@ -24,17 +26,23 @@ export function OrderList({
   canMarkCompleted,
   canTransitionTo,
   getSortedOrders,
-  filterByWarningLevel
+  filterByWarningLevel,
+  isPendingConfirmation,
+  isMultipleRevisions
 }: OrderListProps) {
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'all'>('all')
   const [filterWarning, setFilterWarning] = useState<WarningLevel | 'all'>('all')
   const [searchKeyword, setSearchKeyword] = useState('')
   const [onlyUrgent, setOnlyUrgent] = useState(false)
+  const [onlyPendingConfirm, setOnlyPendingConfirm] = useState(false)
+  const [onlyMultiRevision, setOnlyMultiRevision] = useState(false)
   const [autoSort, setAutoSort] = useState(true)
 
   let filteredOrders = orders.filter(order => {
     if (filterStatus !== 'all' && order.status !== filterStatus) return false
     if (onlyUrgent && !order.isUrgent) return false
+    if (onlyPendingConfirm && !isPendingConfirmation(order)) return false
+    if (onlyMultiRevision && !isMultipleRevisions(order)) return false
     if (searchKeyword) {
       const kw = searchKeyword.toLowerCase()
       return (
@@ -66,6 +74,8 @@ export function OrderList({
     if (order.isUrgent) classes.push('urgent-row')
     if (warning?.level === 'overdue') classes.push('overdue-row')
     else if (warning?.level === 'urgent') classes.push('warning-urgent-row')
+    if (isPendingConfirmation(order)) classes.push('pending-confirm-row')
+    if (isMultipleRevisions(order)) classes.push('multi-revision-row')
     return classes.join(' ')
   }
 
@@ -111,6 +121,22 @@ export function OrderList({
           <label className="urgent-filter">
             <input
               type="checkbox"
+              checked={onlyPendingConfirm}
+              onChange={e => setOnlyPendingConfirm((e.target as HTMLInputElement).checked)}
+            />
+            待回稿确认
+          </label>
+          <label className="urgent-filter">
+            <input
+              type="checkbox"
+              checked={onlyMultiRevision}
+              onChange={e => setOnlyMultiRevision((e.target as HTMLInputElement).checked)}
+            />
+            多次返修
+          </label>
+          <label className="urgent-filter">
+            <input
+              type="checkbox"
               checked={autoSort}
               onChange={e => setAutoSort((e.target as HTMLInputElement).checked)}
             />
@@ -134,6 +160,7 @@ export function OrderList({
                 <th>订单编号</th>
                 <th>客户信息</th>
                 <th>名片规格</th>
+                <th>版本/返修</th>
                 <th>日期</th>
                 <th>打样进度</th>
                 <th>状态</th>
@@ -147,6 +174,8 @@ export function OrderList({
                 const done = completedSteps(order)
                 const total = totalSteps(order)
                 const manualPriority = order.manualPriority || 'auto'
+                const pendingConfirm = isPendingConfirmation(order)
+                const multiRevision = isMultipleRevisions(order)
                 return (
                   <tr key={order.id} className={getRowClass(order, warning)}>
                     <td>
@@ -173,6 +202,8 @@ export function OrderList({
                       <div className="order-no-cell">
                         <span className="order-no">{order.orderNo}</span>
                         {order.isUrgent && <span className="urgent-badge">加急</span>}
+                        {pendingConfirm && <span className="pending-confirm-badge">待回稿</span>}
+                        {multiRevision && <span className="revision-badge">返修x{order.revisionCount}</span>}
                       </div>
                     </td>
                     <td>
@@ -182,6 +213,16 @@ export function OrderList({
                       </div>
                     </td>
                     <td>{order.cardSpec}</td>
+                    <td>
+                      <div className="version-info">
+                        <div className="version-item">版本: V{order.versions?.length || 0}.0</div>
+                        {order.revisionCount > 0 && (
+                          <div className="version-item" style={{ color: multiRevision ? '#dc2626' : '#d97706', fontWeight: 600 }}>
+                            返修: {order.revisionCount}次
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       <div className="date-info">
                         <div className="date-item">下单: {order.orderDate}</div>

@@ -77,7 +77,7 @@ body {
 
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -996,6 +996,138 @@ body {
 .priority-select-inline:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.pending-confirm-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  animation: pulse 1.5s infinite;
+}
+
+.revision-badge {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+.version-info {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.version-info .version-item {
+  font-weight: 500;
+}
+
+.order-table tbody tr.pending-confirm-row {
+  background: #fffbeb;
+}
+
+.order-table tbody tr.pending-confirm-row:hover {
+  background: #fef3c7;
+}
+
+.order-table tbody tr.multi-revision-row {
+  background: #fef2f2;
+}
+
+.order-table tbody tr.multi-revision-row:hover {
+  background: #fee2e2;
+}
+
+.order-table tbody tr.pending-confirm-row.multi-revision-row {
+  background: #ffe4e6;
+}
+
+.order-table tbody tr.pending-confirm-row.multi-revision-row:hover {
+  background: #fecdd3;
+}
+
+.version-no {
+  display: inline-block;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+}
+
+.version-feedback {
+  font-size: 12px;
+  color: #7c3aed;
+  font-style: italic;
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #ede9fe;
+  border-radius: 6px;
+  border-left: 3px solid #7c3aed;
+}
+
+.version-history {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.versions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.version-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s;
+}
+
+.version-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-card.stat-version {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #bfdbfe;
+}
+
+.stat-card.stat-version .stat-value {
+  color: #1d4ed8;
+}
+
+.stat-card.stat-pending-confirm {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fde68a;
+}
+
+.stat-card.stat-pending-confirm .stat-value {
+  color: #d97706;
+  animation: pulse 1.5s infinite;
+}
+
+.stat-card.stat-multi-revision {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fecaca;
+}
+
+.stat-card.stat-multi-revision .stat-value {
+  color: #dc2626;
 }
 
 @media (max-width: 768px) {

@@ -41,6 +41,14 @@ export function StatsOverview({ orders, warningMap }: StatsOverviewProps) {
     return w && w.level === 'urgent'
   }).length
 
+  const totalVersions = orders.reduce((sum, o) => sum + (o.versions?.length || 0), 0)
+  const avgVersions = totalOrders > 0 ? (totalVersions / totalOrders).toFixed(1) : '0'
+  const pendingConfirmCount = orders.filter(o =>
+    (o.versions || []).some(v => v.confirmationResult === 'pending')
+  ).length
+  const multiRevisionCount = orders.filter(o => (o.revisionCount || 0) >= 2).length
+  const revisionRate = totalOrders > 0 ? Math.round((multiRevisionCount / totalOrders) * 100) : 0
+
   const width = 600
   const height = 200
   const margin = { top: 20, right: 20, bottom: 40, left: 40 }
@@ -94,6 +102,26 @@ export function StatsOverview({ orders, warningMap }: StatsOverviewProps) {
         <div className="stat-card">
           <div className="stat-label">完成率</div>
           <div className="stat-value">{completionRate}%</div>
+        </div>
+        <div className="stat-card stat-version">
+          <div className="stat-label">版本总数</div>
+          <div className="stat-value">{totalVersions}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">平均版本次数</div>
+          <div className="stat-value">{avgVersions}</div>
+        </div>
+        <div className="stat-card stat-pending-confirm">
+          <div className="stat-label">待回稿确认</div>
+          <div className="stat-value">{pendingConfirmCount}</div>
+        </div>
+        <div className="stat-card stat-multi-revision">
+          <div className="stat-label">多次返修</div>
+          <div className="stat-value">{multiRevisionCount}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">返修率</div>
+          <div className="stat-value">{revisionRate}%</div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { Order, ORDER_STATUS_MAP, WARNING_LEVEL_MAP, MANUAL_PRIORITY_MAP, WarningInfo, ManualPriority } from '../types'
+import { Order, ORDER_STATUS_MAP, WARNING_LEVEL_MAP, MANUAL_PRIORITY_MAP, WarningInfo, ManualPriority, ProofVersion, ConfirmationResult } from '../types'
 import { ProofSteps } from './ProofSteps'
+import { VersionHistory } from './VersionHistory'
 
 interface OrderDetailDrawerProps {
   open: boolean
@@ -13,6 +14,10 @@ interface OrderDetailDrawerProps {
   onDeleteStep: (stepId: string) => void
   onToggleStepComplete: (stepId: string) => void
   onUpdateManualPriority: (orderId: string, priority: ManualPriority) => void
+  onAddVersion: (versionData: Omit<ProofVersion, 'id' | 'versionNo' | 'submissionTime'>) => void
+  onUpdateVersion: (versionId: string, data: Partial<ProofVersion>) => void
+  onDeleteVersion: (versionId: string) => void
+  onConfirmVersion: (versionId: string, result: ConfirmationResult, feedback?: string, confirmer?: string) => void
 }
 
 export function OrderDetailDrawer({
@@ -25,7 +30,11 @@ export function OrderDetailDrawer({
   onUpdateStep,
   onDeleteStep,
   onToggleStepComplete,
-  onUpdateManualPriority
+  onUpdateManualPriority,
+  onAddVersion,
+  onUpdateVersion,
+  onDeleteVersion,
+  onConfirmVersion
 }: OrderDetailDrawerProps) {
   if (!order) return null
 
@@ -44,6 +53,7 @@ export function OrderDetailDrawer({
               <div className="drawer-subtitle">
                 <span className="order-no-text">{order.orderNo}</span>
                 {order.isUrgent && <span className="urgent-badge">加急</span>}
+                {order.revisionCount >= 2 && <span className="revision-badge">返修x{order.revisionCount}</span>}
                 {warning && warning.level !== 'normal' && (
                   <span
                     className={`warning-badge ${warning.level === 'overdue' ? 'warning-overdue' : 'warning-urgent'}`}
@@ -139,6 +149,16 @@ export function OrderDetailDrawer({
                   </span>
                 </div>
                 <div className="detail-item">
+                  <span className="detail-label">版本总数</span>
+                  <span className="detail-value">{order.versions?.length || 0} 个</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">返修次数</span>
+                  <span className="detail-value" style={{ color: order.revisionCount >= 2 ? '#dc2626' : '#374151', fontWeight: order.revisionCount >= 2 ? 600 : 400 }}>
+                    {order.revisionCount} 次
+                  </span>
+                </div>
+                <div className="detail-item">
                   <span className="detail-label">创建时间</span>
                   <span className="detail-value">{new Date(order.createdAt).toLocaleString('zh-CN')}</span>
                 </div>
@@ -162,6 +182,18 @@ export function OrderDetailDrawer({
                   编辑订单
                 </button>
               )}
+            </div>
+
+            <div className="detail-section">
+              <VersionHistory
+                orderId={order.id}
+                versions={order.versions || []}
+                disabled={!isEditable}
+                onAdd={onAddVersion}
+                onUpdate={onUpdateVersion}
+                onDelete={onDeleteVersion}
+                onConfirm={onConfirmVersion}
+              />
             </div>
 
             <div className="detail-section">

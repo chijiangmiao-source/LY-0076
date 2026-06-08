@@ -19,6 +19,12 @@ export function App() {
     updateStep,
     deleteStep,
     toggleStepComplete,
+    addVersion,
+    updateVersion,
+    deleteVersion,
+    confirmVersion,
+    isPendingConfirmation,
+    isMultipleRevisions,
     canMarkCompleted,
     canTransitionTo,
     updateManualPriority,
@@ -136,6 +142,8 @@ export function App() {
             canTransitionTo={canTransitionTo}
             getSortedOrders={getSortedOrders}
             filterByWarningLevel={filterByWarningLevel}
+            isPendingConfirmation={isPendingConfirmation}
+            isMultipleRevisions={isMultipleRevisions}
           />
         </section>
       </main>
@@ -167,6 +175,10 @@ export function App() {
         onDeleteStep={(stepId) => detailOrder && deleteStep(detailOrder.id, stepId)}
         onToggleStepComplete={(stepId) => detailOrder && toggleStepComplete(detailOrder.id, stepId)}
         onUpdateManualPriority={updateManualPriority}
+        onAddVersion={(versionData) => detailOrder && addVersion(detailOrder.id, versionData)}
+        onUpdateVersion={(versionId, data) => detailOrder && updateVersion(detailOrder.id, versionId, data)}
+        onDeleteVersion={(versionId) => detailOrder && deleteVersion(detailOrder.id, versionId)}
+        onConfirmVersion={(versionId, result, feedback, confirmer) => detailOrder && confirmVersion(detailOrder.id, versionId, result, feedback, confirmer)}
       />
     </div>
   )

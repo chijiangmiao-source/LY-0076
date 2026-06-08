@@ -10,6 +10,22 @@ export interface WarningInfo {
 
 export type ManualPriority = 'auto' | 'high' | 'medium' | 'low'
 
+export type UploadStatus = 'not_uploaded' | 'uploading' | 'uploaded' | 'upload_failed'
+
+export type ConfirmationResult = 'pending' | 'approved' | 'rejected' | 'needs_revision'
+
+export interface ProofVersion {
+  id: string
+  versionNo: string
+  submissionTime: string
+  modificationNotes: string
+  uploadStatus: UploadStatus
+  confirmationResult: ConfirmationResult
+  confirmationTime?: string
+  confirmer?: string
+  feedback?: string
+}
+
 export interface ProofStep {
   id: string
   name: string
@@ -31,6 +47,9 @@ export interface Order {
   status: OrderStatus
   isUrgent: boolean
   steps: ProofStep[]
+  versions: ProofVersion[]
+  currentVersionNo?: string
+  revisionCount: number
   createdAt: string
   updatedAt: string
   manualPriority?: ManualPriority
@@ -47,6 +66,20 @@ export const MANUAL_PRIORITY_MAP: Record<ManualPriority, { label: string; color:
   high: { label: '高', color: '#dc2626' },
   medium: { label: '中', color: '#d97706' },
   low: { label: '低', color: '#059669' }
+}
+
+export const UPLOAD_STATUS_MAP: Record<UploadStatus, { label: string; color: string; bgColor: string }> = {
+  not_uploaded: { label: '未上传', color: '#6b7280', bgColor: '#f3f4f6' },
+  uploading: { label: '上传中', color: '#d97706', bgColor: '#fef3c7' },
+  uploaded: { label: '已上传', color: '#059669', bgColor: '#d1fae5' },
+  upload_failed: { label: '上传失败', color: '#dc2626', bgColor: '#fee2e2' }
+}
+
+export const CONFIRMATION_RESULT_MAP: Record<ConfirmationResult, { label: string; color: string; bgColor: string }> = {
+  pending: { label: '待确认', color: '#d97706', bgColor: '#fef3c7' },
+  approved: { label: '已通过', color: '#059669', bgColor: '#d1fae5' },
+  rejected: { label: '已拒绝', color: '#dc2626', bgColor: '#fee2e2' },
+  needs_revision: { label: '需修改', color: '#7c3aed', bgColor: '#ede9fe' }
 }
 
 export type OrderStatusMap = Record<OrderStatus, { label: string; color: string; bgColor: string }>

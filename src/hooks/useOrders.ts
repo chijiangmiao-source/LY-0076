@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
-import { Order, ProofStep, OrderStatus, WarningInfo, WarningLevel, ManualPriority } from '../types'
+import { Order, ProofStep, ProofVersion, OrderStatus, WarningInfo, WarningLevel, ManualPriority, ConfirmationResult } from '../types'
 import { getOrders, saveOrders, generateId, generateOrderNo, isOrderNoExists, getWarningCache, saveWarningCache } from '../storage'
 
 export interface ValidationErrors {
@@ -20,6 +20,11 @@ function getDaysBetween(date1: string, date2: string): number {
 
 function getTodayStr(): string {
   return new Date().toISOString().split('T')[0]
+}
+
+function generateVersionNo(versions: ProofVersion[]): string {
+  const count = versions.length
+  return `V${count + 1}.0`
 }
 
 export function calculateWarning(order: Order): WarningInfo {
@@ -62,6 +67,11 @@ export function calculateWarning(order: Order): WarningInfo {
     urgentReasons.push('打样进度落后于时间进度')
   }
 
+  const pendingVersion = order.versions?.find(v => v.confirmationResult === 'pending')
+  if (pendingVersion) {
+    urgentReasons.push('有待客户回稿确认的版本')
+  }
+
   if (urgentReasons.length > 0) {
     return {
       level: 'urgent',
@@ -95,7 +105,14 @@ export function useOrders() {
   const [warningCache, setWarningCache] = useState<Record<string, WarningInfo>>({})
 
   useEffect(() => {
-    setOrders(getOrders())
+    const loadedOrders = getOrders()
+    const migratedOrders = loadedOrders.map(order => ({
+      versions: [],
+      revisionCount: 0,
+      currentVersionNo: undefined,
+      ...order
+    }))
+    setOrders(migratedOrders)
     setWarningCache(getWarningCache())
   }, [])
 
@@ -118,12 +135,14 @@ export function useOrders() {
     setWarningCache(warningMap)
   }, [warningMap])
 
-  const addOrder = useCallback((data: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'steps'> & { steps?: ProofStep[] }) => {
+  const addOrder = useCallback((data: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'steps' | 'versions' | 'revisionCount'> & { steps?: ProofStep[]; versions?: ProofVersion[] }) => {
     const now = new Date().toISOString()
     const newOrder: Order = {
       ...data,
       id: generateId(),
       steps: data.steps || [],
+      versions: data.versions || [],
+      revisionCount: 0,
       createdAt: now,
       updatedAt: now
     }
@@ -259,6 +278,128 @@ export function useOrders() {
     }))
   }, [])
 
+  const addVersion = useCallback((orderId: string, versionData: Omit<ProofVersion, 'id' | 'versionNo' | 'submissionTime'>) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        const versionNo = generateVersionNo(o.versions || [])
+        const newVersion: ProofVersion = {
+          ...versionData,
+          id: generateId(),
+          versionNo,
+          submissionTime: new Date().toISOString()
+        }
+        return {
+          ...o,
+          versions: [...(o.versions || []), newVersion],
+          currentVersionNo: versionNo,
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [])
+
+  const updateVersion = useCallback((orderId: string, versionId: string, data: Partial<ProofVersion>) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          versions: (o.versions || []).map(v => v.id === versionId ? { ...v, ...data } : v),
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [])
+
+  const deleteVersion = useCallback((orderId: string, versionId: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          versions: (o.versions || []).filter(v => v.id !== versionId),
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [])
+
+  const confirmVersion = useCallback((orderId: string, versionId: string, result: ConfirmationResult, feedback?: string, confirmer?: string) => {
+    const order = orders.find(o => o.id === orderId)
+    if (!order) return
+
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        const updatedVersions = (o.versions || []).map(v => {
+          if (v.id === versionId) {
+            return {
+              ...v,
+              confirmationResult: result,
+              confirmationTime: new Date().toISOString(),
+              feedback,
+              confirmer
+            }
+          }
+          return v
+        })
+
+        let updatedStatus = o.status
+        let updatedSteps = o.steps
+        let updatedRevisionCount = o.revisionCount
+
+        if (result === 'needs_revision' || result === 'rejected') {
+          updatedStatus = 'proofing'
+          updatedRevisionCount = o.revisionCount + 1
+          updatedSteps = o.steps.map(s => {
+            if (s.name === '客户确认' || s.name.includes('客户') || s.name.includes('确认')) {
+              return { ...s, completed: false, completedDate: undefined }
+            }
+            return s
+          })
+          if (!updatedSteps.some(s => s.name === '客户确认')) {
+            updatedSteps = [
+              ...updatedSteps,
+              {
+                id: generateId(),
+                name: '客户确认（返修）',
+                assignee: '',
+                plannedDate: getTodayStr(),
+                completed: false,
+                remark: `第 ${updatedRevisionCount} 次返修，需客户重新确认`
+              }
+            ]
+          }
+        } else if (result === 'approved') {
+          if (o.status === 'proofing') {
+            const allStepsCompleted = o.steps.every(s => s.completed)
+            if (allStepsCompleted) {
+              updatedStatus = 'pending_print'
+            }
+          }
+        }
+
+        return {
+          ...o,
+          versions: updatedVersions,
+          status: updatedStatus,
+          steps: updatedSteps,
+          revisionCount: updatedRevisionCount,
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [orders])
+
+  const isPendingConfirmation = useCallback((order: Order): boolean => {
+    return (order.versions || []).some(v => v.confirmationResult === 'pending')
+  }, [])
+
+  const isMultipleRevisions = useCallback((order: Order): boolean => {
+    return order.revisionCount >= 2
+  }, [])
+
   const canMarkCompleted = useCallback((order: Order): boolean => {
     if (order.steps.length === 0) return false
     return order.steps.every(s => s.completed)
@@ -266,6 +407,18 @@ export function useOrders() {
 
   const getSortedOrders = useCallback((ordersToSort: Order[]): Order[] => {
     return [...ordersToSort].sort((a, b) => {
+      const aPending = isPendingConfirmation(a)
+      const bPending = isPendingConfirmation(b)
+      if (aPending !== bPending) {
+        return aPending ? -1 : 1
+      }
+
+      const aMulti = isMultipleRevisions(a)
+      const bMulti = isMultipleRevisions(b)
+      if (aMulti !== bMulti) {
+        return aMulti ? -1 : 1
+      }
+
       const aManual = a.manualPriority || 'auto'
       const bManual = b.manualPriority || 'auto'
       if (aManual !== bManual && (aManual !== 'auto' || bManual !== 'auto')) {
@@ -287,7 +440,7 @@ export function useOrders() {
 
       return a.expectedDate.localeCompare(b.expectedDate)
     })
-  }, [warningMap])
+  }, [warningMap, isPendingConfirmation, isMultipleRevisions])
 
   const filterByWarningLevel = useCallback((ordersToFilter: Order[], level: WarningLevel | 'all'): Order[] => {
     if (level === 'all') return ordersToFilter
@@ -308,6 +461,12 @@ export function useOrders() {
     updateStep,
     deleteStep,
     toggleStepComplete,
+    addVersion,
+    updateVersion,
+    deleteVersion,
+    confirmVersion,
+    isPendingConfirmation,
+    isMultipleRevisions,
     canMarkCompleted,
     canTransitionTo,
     updateManualPriority,
