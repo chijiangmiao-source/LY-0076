@@ -46,8 +46,9 @@ export function StatsOverview({ orders, warningMap }: StatsOverviewProps) {
   const pendingConfirmCount = orders.filter(o =>
     (o.versions || []).some(v => v.confirmationResult === 'pending')
   ).length
+  const hasRevisionCount = orders.filter(o => (o.revisionCount || 0) > 0).length
   const multiRevisionCount = orders.filter(o => (o.revisionCount || 0) >= 2).length
-  const revisionRate = totalOrders > 0 ? Math.round((multiRevisionCount / totalOrders) * 100) : 0
+  const revisionRate = totalOrders > 0 ? Math.round((hasRevisionCount / totalOrders) * 100) : 0
 
   const width = 600
   const height = 200

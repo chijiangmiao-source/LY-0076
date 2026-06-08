@@ -115,7 +115,7 @@ export function VersionHistory({
                     <div className="step-edit-row">
                       <textarea
                         value={editVersion.modificationNotes || ''}
-                        onInput={e => setEditVersion(prev => ({ ...prev, modificationNotes: (e.target as HTMLTextAreaElement).value })}
+                        onInput={e => setEditVersion(prev => ({ ...prev, modificationNotes: (e.target as HTMLTextAreaElement).value }))}
                         className="form-input"
                         placeholder="修改说明"
                         rows={2}
@@ -178,7 +178,7 @@ export function VersionHistory({
                         <input
                           type="text"
                           value={confirmData.confirmer}
-                          onInput={e => setConfirmData(prev => ({ ...prev, confirmer: (e.target as HTMLInputElement).value })}
+                          onInput={e => setConfirmData(prev => ({ ...prev, confirmer: (e.target as HTMLInputElement).value }))}
                           className="form-input"
                           placeholder="请输入确认人姓名"
                         />
@@ -189,7 +189,7 @@ export function VersionHistory({
                         <label className="form-label">反馈意见</label>
                         <textarea
                           value={confirmData.feedback}
-                          onInput={e => setConfirmData(prev => ({ ...prev, feedback: (e.target as HTMLTextAreaElement).value })}
+                          onInput={e => setConfirmData(prev => ({ ...prev, feedback: (e.target as HTMLTextAreaElement).value }))}
                           className="form-input"
                           placeholder="请输入反馈意见（客户退回修改时必填）"
                           rows={2}
@@ -286,7 +286,7 @@ export function VersionHistory({
               <label className="form-label">修改说明</label>
               <textarea
                 value={newVersion.modificationNotes}
-                onInput={e => setNewVersion(prev => ({ ...prev, modificationNotes: (e.target as HTMLTextAreaElement).value })}
+                onInput={e => setNewVersion(prev => ({ ...prev, modificationNotes: (e.target as HTMLTextAreaElement).value }))}
                 className="form-input"
                 placeholder="请输入此版本的修改说明"
                 rows={3}

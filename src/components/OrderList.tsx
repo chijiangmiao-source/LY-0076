@@ -215,7 +215,7 @@ export function OrderList({
                     <td>{order.cardSpec}</td>
                     <td>
                       <div className="version-info">
-                        <div className="version-item">版本: V{order.versions?.length || 0}.0</div>
+                        <div className="version-item">版本: {order.currentVersionNo || (order.versions?.length ? `V${order.versions.length}.0` : 'V0.0')}</div>
                         {order.revisionCount > 0 && (
                           <div className="version-item" style={{ color: multiRevision ? '#dc2626' : '#d97706', fontWeight: 600 }}>
                             返修: {order.revisionCount}次
