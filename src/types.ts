@@ -53,6 +53,7 @@ export interface Order {
   createdAt: string
   updatedAt: string
   manualPriority?: ManualPriority
+  scheduleDate?: string
 }
 
 export const WARNING_LEVEL_MAP: Record<WarningLevel, { label: string; color: string; bgColor: string }> = {
@@ -99,3 +100,32 @@ export const CARD_SPEC_OPTIONS = [
   '100×60mm 大尺寸',
   '自定义规格'
 ]
+
+export type ScheduleGroupKey = 'status' | 'urgent' | 'overdue_risk' | 'pending_confirm' | 'revision_count'
+
+export interface ScheduleGroup {
+  key: ScheduleGroupKey
+  label: string
+  orders: Order[]
+}
+
+export interface CalendarTask {
+  id: string
+  orderId: string
+  orderNo: string
+  customerName: string
+  date: string
+  type: 'schedule' | 'step_due' | 'version_submit' | 'delivery'
+  title: string
+  warningLevel: WarningLevel
+}
+
+export interface ScheduleStats {
+  loadRate: number
+  delayRiskRate: number
+  completionRate: number
+  totalScheduled: number
+  totalDelayed: number
+  totalCompletedOnTime: number
+  dailyLoad: Record<string, number>
+}

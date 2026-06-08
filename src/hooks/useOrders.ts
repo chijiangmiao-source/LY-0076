@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'preact/hooks'
-import { Order, ProofStep, ProofVersion, OrderStatus, WarningInfo, WarningLevel, ManualPriority, ConfirmationResult } from '../types'
+import { Order, ProofStep, ProofVersion, OrderStatus, WarningInfo, WarningLevel, ManualPriority, ConfirmationResult, ScheduleGroup, ScheduleGroupKey, CalendarTask, ScheduleStats, ORDER_STATUS_MAP } from '../types'
 import { getOrders, saveOrders, generateId, generateOrderNo, isOrderNoExists, getWarningCache, saveWarningCache } from '../storage'
 
 export interface ValidationErrors {
@@ -107,10 +107,10 @@ export function useOrders() {
   useEffect(() => {
     const loadedOrders = getOrders()
     const migratedOrders = loadedOrders.map(order => ({
-      versions: [],
-      revisionCount: 0,
-      currentVersionNo: undefined,
-      ...order
+      ...order,
+      versions: order.versions || [],
+      revisionCount: order.revisionCount || 0,
+      currentVersionNo: order.currentVersionNo || undefined
     }))
     setOrders(migratedOrders)
     setWarningCache(getWarningCache())
@@ -450,6 +450,245 @@ export function useOrders() {
     })
   }, [warningMap])
 
+  const setScheduleDate = useCallback((orderId: string, scheduleDate: string | undefined) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        let updatedSteps = o.steps
+        if (scheduleDate) {
+          const baseDate = new Date(scheduleDate)
+          updatedSteps = o.steps.map((step, idx) => {
+            const stepDate = new Date(baseDate)
+            stepDate.setDate(stepDate.getDate() + idx)
+            return {
+              ...step,
+              plannedDate: stepDate.toISOString().split('T')[0]
+            }
+          })
+        }
+        return {
+          ...o,
+          scheduleDate,
+          steps: updatedSteps,
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [])
+
+  const batchScheduleOrders = useCallback((orderIds: string[], scheduleDate: string) => {
+    setOrders(prev => prev.map(o => {
+      if (orderIds.includes(o.id)) {
+        const baseDate = new Date(scheduleDate)
+        const orderIdx = orderIds.indexOf(o.id)
+        baseDate.setDate(baseDate.getDate() + Math.floor(orderIdx / 3))
+        const actualDate = baseDate.toISOString().split('T')[0]
+        const updatedSteps = o.steps.map((step, idx) => {
+          const stepDate = new Date(baseDate)
+          stepDate.setDate(stepDate.getDate() + idx)
+          return {
+            ...step,
+            plannedDate: stepDate.toISOString().split('T')[0]
+          }
+        })
+        return {
+          ...o,
+          scheduleDate: actualDate,
+          steps: updatedSteps,
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [])
+
+  const batchPostponeOrders = useCallback((orderIds: string[], days: number) => {
+    setOrders(prev => prev.map(o => {
+      if (orderIds.includes(o.id) && o.scheduleDate) {
+        const currentDate = new Date(o.scheduleDate)
+        currentDate.setDate(currentDate.getDate() + days)
+        const newScheduleDate = currentDate.toISOString().split('T')[0]
+        const updatedSteps = o.steps.map(step => {
+          if (step.plannedDate) {
+            const stepDate = new Date(step.plannedDate)
+            stepDate.setDate(stepDate.getDate() + days)
+            return {
+              ...step,
+              plannedDate: stepDate.toISOString().split('T')[0]
+            }
+          }
+          return step
+        })
+        return {
+          ...o,
+          scheduleDate: newScheduleDate,
+          steps: updatedSteps,
+          updatedAt: new Date().toISOString()
+        }
+      }
+      return o
+    }))
+  }, [])
+
+  const getScheduleGroups = useCallback((ordersToGroup: Order[]): ScheduleGroup[] => {
+    const groups: ScheduleGroup[] = []
+    const activeOrders = ordersToGroup.filter(o => o.status !== 'completed' && o.status !== 'cancelled')
+
+    const statusGroups: Record<string, Order[]> = {}
+    activeOrders.forEach(o => {
+      if (!statusGroups[o.status]) statusGroups[o.status] = []
+      statusGroups[o.status].push(o)
+    })
+    Object.entries(statusGroups).forEach(([status, ords]) => {
+      groups.push({ key: 'status', label: `状态: ${ORDER_STATUS_MAP[status as OrderStatus]?.label || status}`, orders: ords })
+    })
+
+    const urgentOrders = activeOrders.filter(o => o.isUrgent)
+    if (urgentOrders.length > 0) {
+      groups.push({ key: 'urgent', label: '加急订单', orders: urgentOrders })
+    }
+
+    const overdueRiskOrders = activeOrders.filter(o => {
+      const w = warningMap[o.id]
+      return w && (w.level === 'overdue' || w.level === 'urgent')
+    })
+    if (overdueRiskOrders.length > 0) {
+      groups.push({ key: 'overdue_risk', label: '逾期风险', orders: overdueRiskOrders })
+    }
+
+    const pendingConfirmOrders = activeOrders.filter(o => isPendingConfirmation(o))
+    if (pendingConfirmOrders.length > 0) {
+      groups.push({ key: 'pending_confirm', label: '待回稿确认', orders: pendingConfirmOrders })
+    }
+
+    const multiRevisionOrders = activeOrders.filter(o => isMultipleRevisions(o))
+    if (multiRevisionOrders.length > 0) {
+      groups.push({ key: 'revision_count', label: `多次返修 (≥2次)`, orders: multiRevisionOrders })
+    }
+
+    return groups
+  }, [warningMap, isPendingConfirmation, isMultipleRevisions])
+
+  const getCalendarTasks = useCallback((ordersForCalendar: Order[], startDate: string, endDate: string): CalendarTask[] => {
+    const tasks: CalendarTask[] = []
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+
+    ordersForCalendar.forEach(order => {
+      const warning = warningMap[order.id] || { level: 'normal' as WarningLevel }
+
+      if (order.scheduleDate) {
+        const sDate = new Date(order.scheduleDate)
+        if (sDate >= start && sDate <= end) {
+          tasks.push({
+            id: `schedule-${order.id}`,
+            orderId: order.id,
+            orderNo: order.orderNo,
+            customerName: order.customerName,
+            date: order.scheduleDate,
+            type: 'schedule',
+            title: `排产开始 - ${order.customerName}`,
+            warningLevel: warning.level
+          })
+        }
+      }
+
+      order.steps.forEach(step => {
+        if (step.plannedDate && !step.completed) {
+          const sDate = new Date(step.plannedDate)
+          if (sDate >= start && sDate <= end) {
+            tasks.push({
+              id: `step-${order.id}-${step.id}`,
+              orderId: order.id,
+              orderNo: order.orderNo,
+              customerName: order.customerName,
+              date: step.plannedDate,
+              type: 'step_due',
+              title: `${step.name} - ${order.customerName}`,
+              warningLevel: warning.level
+            })
+          }
+        }
+      })
+
+      order.versions.forEach(version => {
+        if (version.confirmationResult === 'pending' && version.submissionTime) {
+          const subDate = new Date(version.submissionTime.split('T')[0])
+          if (subDate >= start && subDate <= end) {
+            tasks.push({
+              id: `version-${order.id}-${version.id}`,
+              orderId: order.id,
+              orderNo: order.orderNo,
+              customerName: order.customerName,
+              date: version.submissionTime.split('T')[0],
+              type: 'version_submit',
+              title: `版本${version.versionNo}待确认 - ${order.customerName}`,
+              warningLevel: warning.level
+            })
+          }
+        }
+      })
+
+      const expDate = new Date(order.expectedDate)
+      if (expDate >= start && expDate <= end && order.status !== 'completed' && order.status !== 'cancelled') {
+        tasks.push({
+          id: `delivery-${order.id}`,
+          orderId: order.id,
+          orderNo: order.orderNo,
+          customerName: order.customerName,
+          date: order.expectedDate,
+          type: 'delivery',
+          title: `预计交付 - ${order.customerName}`,
+          warningLevel: warning.level
+        })
+      }
+    })
+
+    return tasks.sort((a, b) => a.date.localeCompare(b.date))
+  }, [warningMap])
+
+  const getScheduleStats = useCallback((): ScheduleStats => {
+    const today = getTodayStr()
+    const scheduledOrders = orders.filter(o => o.scheduleDate && o.status !== 'completed' && o.status !== 'cancelled')
+    const totalScheduled = scheduledOrders.length
+
+    const delayedOrders = scheduledOrders.filter(o => {
+      const w = warningMap[o.id]
+      return w && (w.level === 'overdue' || w.level === 'urgent')
+    })
+    const totalDelayed = delayedOrders.length
+
+    const completedOnTime = orders.filter(o => {
+      if (o.status !== 'completed') return false
+      return !warningMap[o.id] || warningMap[o.id].level === 'normal'
+    }).length
+    const totalCompleted = orders.filter(o => o.status === 'completed').length
+
+    const loadRate = totalScheduled > 0 ? Math.round((totalScheduled / Math.max(totalScheduled + 3, 10)) * 100) : 0
+    const delayRiskRate = totalScheduled > 0 ? Math.round((totalDelayed / totalScheduled) * 100) : 0
+    const completionRate = totalCompleted > 0 ? Math.round((completedOnTime / totalCompleted) * 100) : 0
+
+    const dailyLoad: Record<string, number> = {}
+    const weekStart = new Date(today)
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(weekStart)
+      d.setDate(d.getDate() + i)
+      const dateStr = d.toISOString().split('T')[0]
+      dailyLoad[dateStr] = scheduledOrders.filter(o => o.scheduleDate === dateStr).length
+    }
+
+    return {
+      loadRate,
+      delayRiskRate,
+      completionRate,
+      totalScheduled,
+      totalDelayed,
+      totalCompletedOnTime: completedOnTime,
+      dailyLoad
+    }
+  }, [orders, warningMap])
+
   return {
     orders,
     warningMap,
@@ -473,7 +712,13 @@ export function useOrders() {
     getSortedOrders,
     filterByWarningLevel,
     generateOrderNo,
-    isOrderNoExists
+    isOrderNoExists,
+    setScheduleDate,
+    batchScheduleOrders,
+    batchPostponeOrders,
+    getScheduleGroups,
+    getCalendarTasks,
+    getScheduleStats
   }
 }
 

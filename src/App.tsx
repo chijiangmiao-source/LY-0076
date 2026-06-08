@@ -5,7 +5,10 @@ import { StatsOverview } from './components/StatsOverview'
 import { OrderList } from './components/OrderList'
 import { OrderFormDialog } from './components/OrderFormDialog'
 import { OrderDetailDrawer } from './components/OrderDetailDrawer'
+import { ProductionCalendar } from './components/ProductionCalendar'
 import './styles.css'
+
+type ActiveView = 'orders' | 'calendar'
 
 export function App() {
   const {
@@ -31,13 +34,20 @@ export function App() {
     getSortedOrders,
     filterByWarningLevel,
     generateOrderNo,
-    isOrderNoExists
+    isOrderNoExists,
+    setScheduleDate,
+    batchScheduleOrders,
+    batchPostponeOrders,
+    getScheduleGroups,
+    getCalendarTasks,
+    getScheduleStats
   } = useOrders()
 
   const [showFormDialog, setShowFormDialog] = useState(false)
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null)
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
+  const [activeView, setActiveView] = useState<ActiveView>('orders')
 
   const editingOrder = useMemo(
     () => editingOrderId ? orders.find(o => o.id === editingOrderId) || null : null,
@@ -48,6 +58,8 @@ export function App() {
     () => detailOrderId ? orders.find(o => o.id === detailOrderId) || null : null,
     [detailOrderId, orders]
   )
+
+  const scheduleStats = useMemo(() => getScheduleStats(), [getScheduleStats])
 
   const handleAddClick = () => {
     setEditingOrderId(null)
@@ -116,36 +128,70 @@ export function App() {
               <p className="app-subtitle">Business Card Proofing Dashboard</p>
             </div>
           </div>
-          <button className="btn-primary" onClick={handleAddClick}>
-            + 新增订单
-          </button>
+          <div className="header-actions">
+            <div className="view-tabs">
+              <button
+                className={`view-tab ${activeView === 'orders' ? 'active' : ''}`}
+                onClick={() => setActiveView('orders')}
+              >
+                📋 订单管理
+              </button>
+              <button
+                className={`view-tab ${activeView === 'calendar' ? 'active' : ''}`}
+                onClick={() => setActiveView('calendar')}
+              >
+                📅 排产日历
+              </button>
+            </div>
+            <button className="btn-primary" onClick={handleAddClick}>
+              + 新增订单
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="app-main">
         <section className="stats-section">
-          <StatsOverview orders={orders} warningMap={warningMap} />
+          <StatsOverview orders={orders} warningMap={warningMap} scheduleStats={scheduleStats} />
         </section>
 
-        <section className="orders-section">
-          <div className="section-header">
-            <h2 className="section-title">订单管理</h2>
-          </div>
-          <OrderList
-            orders={orders}
-            warningMap={warningMap}
-            onViewDetail={handleViewDetail}
-            onEdit={handleEdit}
-            onDelete={deleteOrder}
-            onStatusChange={updateOrderStatus}
-            canMarkCompleted={canMarkCompleted}
-            canTransitionTo={canTransitionTo}
-            getSortedOrders={getSortedOrders}
-            filterByWarningLevel={filterByWarningLevel}
-            isPendingConfirmation={isPendingConfirmation}
-            isMultipleRevisions={isMultipleRevisions}
-          />
-        </section>
+        {activeView === 'orders' ? (
+          <section className="orders-section">
+            <div className="section-header">
+              <h2 className="section-title">订单管理</h2>
+            </div>
+            <OrderList
+              orders={orders}
+              warningMap={warningMap}
+              onViewDetail={handleViewDetail}
+              onEdit={handleEdit}
+              onDelete={deleteOrder}
+              onStatusChange={updateOrderStatus}
+              canMarkCompleted={canMarkCompleted}
+              canTransitionTo={canTransitionTo}
+              getSortedOrders={getSortedOrders}
+              filterByWarningLevel={filterByWarningLevel}
+              isPendingConfirmation={isPendingConfirmation}
+              isMultipleRevisions={isMultipleRevisions}
+            />
+          </section>
+        ) : (
+          <section className="calendar-section">
+            <div className="section-header">
+              <h2 className="section-title">批量排产与交付日历</h2>
+            </div>
+            <ProductionCalendar
+              orders={orders}
+              warningMap={warningMap}
+              getScheduleGroups={getScheduleGroups}
+              getCalendarTasks={getCalendarTasks}
+              setScheduleDate={setScheduleDate}
+              batchScheduleOrders={batchScheduleOrders}
+              batchPostponeOrders={batchPostponeOrders}
+              onViewDetail={handleViewDetail}
+            />
+          </section>
+        )}
       </main>
 
       <OrderFormDialog

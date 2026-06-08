@@ -1,4 +1,4 @@
-import { Order, ORDER_STATUS_MAP, OrderStatus, WarningInfo } from '../types'
+import { Order, ORDER_STATUS_MAP, OrderStatus, WarningInfo, ScheduleStats } from '../types'
 import { Bar } from '@visx/shape'
 import { Group } from '@visx/group'
 import { scaleBand, scaleLinear, scaleOrdinal } from '@visx/scale'
@@ -7,6 +7,7 @@ import { Text } from '@visx/text'
 interface StatsOverviewProps {
   orders: Order[]
   warningMap: Record<string, WarningInfo>
+  scheduleStats?: ScheduleStats
 }
 
 interface StatusData {
@@ -16,7 +17,7 @@ interface StatusData {
   color: string
 }
 
-export function StatsOverview({ orders, warningMap }: StatsOverviewProps) {
+export function StatsOverview({ orders, warningMap, scheduleStats }: StatsOverviewProps) {
   const statuses: OrderStatus[] = ['pending_layout', 'proofing', 'pending_print', 'completed', 'cancelled']
 
   const data: StatusData[] = statuses.map(status => ({
@@ -124,6 +125,22 @@ export function StatsOverview({ orders, warningMap }: StatsOverviewProps) {
           <div className="stat-label">返修率</div>
           <div className="stat-value">{revisionRate}%</div>
         </div>
+        {scheduleStats && (
+          <>
+            <div className="stat-card stat-schedule-load">
+              <div className="stat-label">排产负载率</div>
+              <div className="stat-value">{scheduleStats.loadRate}%</div>
+            </div>
+            <div className="stat-card stat-delay-risk">
+              <div className="stat-label">延期风险率</div>
+              <div className="stat-value">{scheduleStats.delayRiskRate}%</div>
+            </div>
+            <div className="stat-card stat-schedule-complete">
+              <div className="stat-label">排产完成率</div>
+              <div className="stat-value">{scheduleStats.completionRate}%</div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="chart-container">
