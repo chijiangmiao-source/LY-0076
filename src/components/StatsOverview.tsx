@@ -1,4 +1,4 @@
-import { Order, ORDER_STATUS_MAP, OrderStatus } from '../types'
+import { Order, ORDER_STATUS_MAP, OrderStatus, WarningInfo } from '../types'
 import { Bar } from '@visx/shape'
 import { Group } from '@visx/group'
 import { scaleBand, scaleLinear, scaleOrdinal } from '@visx/scale'
@@ -6,6 +6,7 @@ import { Text } from '@visx/text'
 
 interface StatsOverviewProps {
   orders: Order[]
+  warningMap: Record<string, WarningInfo>
 }
 
 interface StatusData {
@@ -15,7 +16,7 @@ interface StatusData {
   color: string
 }
 
-export function StatsOverview({ orders }: StatsOverviewProps) {
+export function StatsOverview({ orders, warningMap }: StatsOverviewProps) {
   const statuses: OrderStatus[] = ['pending_layout', 'proofing', 'pending_print', 'completed', 'cancelled']
 
   const data: StatusData[] = statuses.map(status => ({
@@ -29,6 +30,16 @@ export function StatsOverview({ orders }: StatsOverviewProps) {
   const urgentCount = orders.filter(o => o.isUrgent).length
   const completedCount = orders.filter(o => o.status === 'completed').length
   const completionRate = totalOrders > 0 ? Math.round((completedCount / totalOrders) * 100) : 0
+
+  const overdueCount = orders.filter(o => {
+    const w = warningMap[o.id]
+    return w && w.level === 'overdue'
+  }).length
+
+  const warningUrgentCount = orders.filter(o => {
+    const w = warningMap[o.id]
+    return w && w.level === 'urgent'
+  }).length
 
   const width = 600
   const height = 200
@@ -67,6 +78,14 @@ export function StatsOverview({ orders }: StatsOverviewProps) {
         <div className="stat-card stat-urgent">
           <div className="stat-label">加急订单</div>
           <div className="stat-value">{urgentCount}</div>
+        </div>
+        <div className="stat-card stat-warning-urgent">
+          <div className="stat-label">紧急预警</div>
+          <div className="stat-value">{warningUrgentCount}</div>
+        </div>
+        <div className="stat-card stat-overdue">
+          <div className="stat-label">已逾期</div>
+          <div className="stat-value">{overdueCount}</div>
         </div>
         <div className="stat-card stat-completed">
           <div className="stat-label">已完成</div>

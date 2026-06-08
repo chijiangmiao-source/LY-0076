@@ -10,6 +10,7 @@ import './styles.css'
 export function App() {
   const {
     orders,
+    warningMap,
     addOrder,
     updateOrder,
     deleteOrder,
@@ -19,6 +20,10 @@ export function App() {
     deleteStep,
     toggleStepComplete,
     canMarkCompleted,
+    canTransitionTo,
+    updateManualPriority,
+    getSortedOrders,
+    filterByWarningLevel,
     generateOrderNo,
     isOrderNoExists
   } = useOrders()
@@ -94,7 +99,7 @@ export function App() {
 
       <main className="app-main">
         <section className="stats-section">
-          <StatsOverview orders={orders} />
+          <StatsOverview orders={orders} warningMap={warningMap} />
         </section>
 
         <section className="orders-section">
@@ -103,11 +108,15 @@ export function App() {
           </div>
           <OrderList
             orders={orders}
+            warningMap={warningMap}
             onViewDetail={handleViewDetail}
             onEdit={handleEdit}
             onDelete={deleteOrder}
             onStatusChange={updateOrderStatus}
             canMarkCompleted={canMarkCompleted}
+            canTransitionTo={canTransitionTo}
+            getSortedOrders={getSortedOrders}
+            filterByWarningLevel={filterByWarningLevel}
           />
         </section>
       </main>
@@ -127,6 +136,7 @@ export function App() {
       <OrderDetailDrawer
         open={showDetailDrawer}
         order={detailOrder}
+        warning={detailOrder ? warningMap[detailOrder.id] : undefined}
         onClose={() => {
           setShowDetailDrawer(false)
           setDetailOrder(null)
@@ -136,6 +146,7 @@ export function App() {
         onUpdateStep={(stepId, data) => detailOrder && updateStep(detailOrder.id, stepId, data)}
         onDeleteStep={(stepId) => detailOrder && deleteStep(detailOrder.id, stepId)}
         onToggleStepComplete={(stepId) => detailOrder && toggleStepComplete(detailOrder.id, stepId)}
+        onUpdateManualPriority={updateManualPriority}
       />
     </div>
   )

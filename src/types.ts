@@ -1,5 +1,15 @@
 export type OrderStatus = 'pending_layout' | 'proofing' | 'pending_print' | 'completed' | 'cancelled'
 
+export type WarningLevel = 'normal' | 'urgent' | 'overdue'
+
+export interface WarningInfo {
+  level: WarningLevel
+  daysRemaining: number
+  reason: string
+}
+
+export type ManualPriority = 'auto' | 'high' | 'medium' | 'low'
+
 export interface ProofStep {
   id: string
   name: string
@@ -23,6 +33,20 @@ export interface Order {
   steps: ProofStep[]
   createdAt: string
   updatedAt: string
+  manualPriority?: ManualPriority
+}
+
+export const WARNING_LEVEL_MAP: Record<WarningLevel, { label: string; color: string; bgColor: string }> = {
+  normal: { label: '正常', color: '#059669', bgColor: '#d1fae5' },
+  urgent: { label: '紧急', color: '#d97706', bgColor: '#fef3c7' },
+  overdue: { label: '已逾期', color: '#dc2626', bgColor: '#fee2e2' }
+}
+
+export const MANUAL_PRIORITY_MAP: Record<ManualPriority, { label: string; color: string }> = {
+  auto: { label: '自动', color: '#6b7280' },
+  high: { label: '高', color: '#dc2626' },
+  medium: { label: '中', color: '#d97706' },
+  low: { label: '低', color: '#059669' }
 }
 
 export type OrderStatusMap = Record<OrderStatus, { label: string; color: string; bgColor: string }>

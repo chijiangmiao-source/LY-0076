@@ -1,6 +1,8 @@
-import { Order } from './types'
+import { Order, WarningInfo } from './types'
 
 const STORAGE_KEY = 'business_card_orders'
+const WARNING_CACHE_KEY = 'business_card_warning_cache'
+const PRIORITY_KEY = 'business_card_manual_priorities'
 
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
@@ -38,4 +40,24 @@ export function saveOrders(orders: Order[]): void {
 export function isOrderNoExists(orderNo: string, excludeId?: string): boolean {
   const orders = getOrders()
   return orders.some(o => o.orderNo === orderNo && o.id !== excludeId)
+}
+
+export function getWarningCache(): Record<string, WarningInfo> {
+  try {
+    const data = localStorage.getItem(WARNING_CACHE_KEY)
+    if (data) {
+      return JSON.parse(data) as Record<string, WarningInfo>
+    }
+  } catch (e) {
+      console.error('读取预警缓存失败:', e)
+    }
+  return {}
+}
+
+export function saveWarningCache(cache: Record<string, WarningInfo>): void {
+  try {
+    localStorage.setItem(WARNING_CACHE_KEY, JSON.stringify(cache))
+  } catch (e) {
+    console.error('保存预警缓存失败:', e)
+  }
 }
