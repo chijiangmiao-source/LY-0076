@@ -153,6 +153,16 @@ export function useOrders() {
   }
 }
 
+function isValidName(name: string): boolean {
+  const trimmed = name.trim()
+  if (!trimmed) return false
+  if (/^\d+$/.test(trimmed)) return false
+  if (/^[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?~`]+$/.test(trimmed)) return false
+  if (/[\uFFFD\uFFFE\uFFFF]/.test(trimmed)) return false
+  const hasValidChar = /[\u4e00-\u9fa5a-zA-Z]/.test(trimmed)
+  return hasValidChar
+}
+
 export function validateOrder(
   data: {
     orderNo: string
@@ -173,26 +183,28 @@ export function validateOrder(
 
   if (!data.customerName.trim()) {
     errors.customerName = '客户姓名不能为空'
+  } else if (!isValidName(data.customerName)) {
+    errors.customerName = '客户姓名格式不正确，请输入有效的中文或英文姓名'
   }
 
   if (!data.companyName.trim()) {
     errors.companyName = '公司名称不能为空'
+  } else if (!isValidName(data.companyName)) {
+    errors.companyName = '公司名称格式不正确，请输入有效的公司名称'
   }
 
   if (!data.orderDate) {
     errors.orderDate = '请选择下单日期'
   } else {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const orderDate = new Date(data.orderDate)
-    if (orderDate > today) {
+    const today = new Date().toISOString().split('T')[0]
+    if (data.orderDate > today) {
       errors.orderDate = '下单日期不能晚于当前日期'
     }
   }
 
   if (!data.expectedDate) {
     errors.expectedDate = '请选择预计交付日期'
-  } else if (data.orderDate && new Date(data.expectedDate) < new Date(data.orderDate)) {
+  } else if (data.orderDate && data.expectedDate < data.orderDate) {
     errors.expectedDate = '预计交付日期不能早于下单日期'
   }
 

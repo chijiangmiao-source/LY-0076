@@ -56,8 +56,20 @@ export function App() {
     isUrgent: boolean
   }) => {
     if (editingOrder) {
+      if (
+        editingOrder.status !== 'completed' &&
+        editingOrder.status !== 'cancelled' &&
+        (data.status === 'completed' || data.status === 'cancelled')
+      ) {
+        alert('编辑订单时不能直接标记为已完成或已取消，请通过订单列表中的状态流转功能操作')
+        return
+      }
       updateOrder(editingOrder.id, data)
     } else {
+      if (data.status === 'completed' || data.status === 'cancelled') {
+        alert('新增订单不能直接标记为已完成或已取消')
+        return
+      }
       addOrder(data)
     }
     setEditingOrder(null)

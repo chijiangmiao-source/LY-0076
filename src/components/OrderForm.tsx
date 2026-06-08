@@ -195,11 +195,29 @@ export function OrderForm({
               value={formData.status}
               onChange={e => handleFieldChange('status', e.currentTarget.value as OrderStatus)}
               className="form-input"
+              disabled={formData.status === 'completed' || formData.status === 'cancelled'}
             >
-              {Object.entries(ORDER_STATUS_MAP).map(([key, val]) => (
-                <option value={key} key={key}>{val.label}</option>
-              ))}
+              {Object.entries(ORDER_STATUS_MAP)
+                .filter(([key]) => {
+                  if (formData.status === 'completed' || formData.status === 'cancelled') {
+                    return key === formData.status
+                  }
+                  return key !== 'completed' && key !== 'cancelled'
+                })
+                .map(([key, val]) => (
+                  <option value={key} key={key}>{val.label}</option>
+                ))}
             </select>
+            {(formData.status === 'completed' || formData.status === 'cancelled') && (
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                {formData.status === 'completed' ? '已完成订单不可修改状态' : '已取消订单不可修改状态'}
+              </div>
+            )}
+            {formData.status !== 'completed' && formData.status !== 'cancelled' && (
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                需在订单列表中通过状态流转完成订单
+              </div>
+            )}
           </div>
         </div>
       )}
